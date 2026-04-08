@@ -1,11 +1,11 @@
-## DNS Automation in OCI Private Zones Using Python and Bash
+## Automate DNS Record Creation in OCI Private DNS Zones with Python and Bash
 
 Managing DNS records in Oracle Cloud Infrastructure (OCI) is simple for small environments. However, as cloud environments scale across microservices, hybrid architectures, and large onboarding pipelines, manual DNS management becomes inefficient and error-prone.
 
 This project demonstrates how to automate DNS record management in OCI Private Zones using:
 
-Bash + OCI CLI (fast bulk updates)
-Python + OCI SDK (intelligent incremental updates)
+Bash + OCI CLI 
+Python + OCI SDK 
 
 ## Problem Statement
 In real-world environments:
@@ -31,32 +31,20 @@ In real-world environments:
 
 - How to Run (Bash Script)
 
-  1. Create CSV file
+  Login to OCI Cloud Shell and follow the below commands: 
+
+  1. Create/Upload the CSV file
   
-  cat > records.csv <<EOF
-  DOMAIN,TYPE,TTL,RDATA
-  host1.abc.com,A,3600,10.0.0.10|10.0.0.11
-  EOF
+    Ex: records.csv
   
-  2. Fix line endings 
-  
-  sed -i 's/\r$//' dns_records_update.sh
-  
-  3. Make script executable
+  2. Make script executable
   
   chmod +x dns_records_update.sh
   
-  4. Update variables in script
-  
-  VIEW_ID="<PRIVATE_VIEW_OCID>"
-  
-  ZONE="<ZONE_NAME or OCID>"
-  
-  CSV_FILE="records.csv"
-  
-  5. Execute
-  
-  ./dns_records_update.sh
+  3. Execute the command by updating the PRIVATE_VIEW_OCID, ZONE_NAME and CSV_FILE.
+
+  ./dns_records_update.sh -v <Private View OCID> -z <Zone Name> -f <CSV file name>
+
 
 - Behavior
   1. Processes DNS records from a CSV input file
@@ -75,25 +63,19 @@ In real-world environments:
 
 - How to Run (Python Script)
 
+  Login to OCI Cloud Shell and follow the below commands: 
+
   1. Install dependencies
   
+    python3 -m pip install --user pandas
     pip install oci pandas openpyxl
   
-  2. Configure OCI CLI
-  
-    oci setup config
-  
-  3. Update script inputs
-  
-    ZONE_NAME = "<ZONE_OCID>"
-  
-    COMPARTMENT_ID = "<COMPARTMENT_OCID>"
-  
-    EXCEL_FILE = "dns_sample.xlsx"
-  
-  4. Run Script 
-  
-    python3 dns_records_update.py
+  2. Run Script by updating the Zone_OCID, COMPARTMENT_OCID AND excel file parameters in the below command. 
+
+    python3 script.py \
+      -z <ocid1.dns-zone.xxx> \
+      -c <ocid1.compartment.xxx> \
+      -f <dns_sample.xlsx>
 
 - Behavior
   1. Reads DNS records from an Excel input file
