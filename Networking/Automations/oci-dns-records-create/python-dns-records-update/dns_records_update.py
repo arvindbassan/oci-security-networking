@@ -1,12 +1,21 @@
 import oci
 import pandas as pd
+import argparse
 
 # ================================
-# INPUTS
+# ARGUMENT PARSING
 # ================================
-ZONE_NAME = "ocid1.dns-zone.oc1.iad.aaa*******" #Update the zone OCID
-COMPARTMENT_ID = "ocid1.compartment.oc1..aaa******" #Update the compartment OCID
-EXCEL_FILE = "records.xlsx" #Update the Excel file name
+parser = argparse.ArgumentParser(description="OCI DNS Record Automation Script")
+
+parser.add_argument("-z", "--zone", required=True, help="Zone OCID")
+parser.add_argument("-c", "--compartment", required=True, help="Compartment OCID")
+parser.add_argument("-f", "--file", required=True, help="Excel file path")
+
+args = parser.parse_args()
+
+ZONE_NAME = args.zone
+COMPARTMENT_ID = args.compartment
+EXCEL_FILE = args.file
 SUPPORTED_TYPES = {"A", "AAAA", "CNAME"}
 
 # ================================

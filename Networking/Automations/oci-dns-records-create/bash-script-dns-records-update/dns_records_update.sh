@@ -2,29 +2,77 @@
 
 set -euo pipefail
 
-VIEW_ID="ocid1.dnsview.oc1.iad.amaaa******" #Update the Private View OCID
-ZONE="abc.com" #Update the Zone name
-CSV_FILE="records.csv" #Update the CSV file
+usage() {
+  cat <<EOF
+Usage:
+  $0 --view-id <VIEW_ID> --zone <ZONE> --file <CSV_FILE>
+  $0 -v <VIEW_ID> -z <ZONE> -f <CSV_FILE>
 
-# Expected CSV columns:
-# DOMAIN,TYPE,TTL,RDATA
-# RDATA can contain multiple values separated by "|"
-#
-# Example:
-# host1.abc.com,A,3600,10.0.0.10|10.0.0.11
-# host2.abc.com,AAAA,3600,2001:db8::10|2001:db8::11
-# alias1.abc.com,CNAME,3600,target1.abc.com.
+Example:
+  $0 --view-id ocid1.dnsview.oc1.iad.xxxxx --zone abc.com --file records.csv
+  $0 -v ocid1.dnsview.oc1.iad.xxxxx -z abc.com -f records.csv
+EOF
+  exit 1
+}
 
-tail -n +2 "$CSV_FILE" | while IFS=, read -r DOMAIN TYPE TTL RDATA
+VIEW_ID=""
+ZONE=""
+CSV_FILE=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --view-id|-v)
+      VIEW_ID="${2:-}"
+      shift 2
+      ;;
+    --zone|-z)
+      ZONE="${2:-}"
+      shift 2
+      ;;
+    --file|-f)
+      CSV_FILE="${2:-}"
+      shift 2
+      ;;
+    --help|-h)
+      usage
+      ;;
+    *)
+      echo "Unknown parameter: $1"
+      usage
+      ;;
+  esac
+done
+
+if [[ -z "$VIEW_ID" || -z "$ZONE" || -z "$CSV_FILE" ]]; then
+  echo "Error: Missing required arguments"
+  usage
+fi
+
+if [[ ! -f "$CSV_FILE" ]]; then
+  echo "Error: CSV file not found: $CSV_FILE"
+  exit 1
+fi
+
+trim() {
+  local s="$1"
+  s="${s//$'\r'/}"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  s="${s#\"}"
+  s="${s%\"}"
+  printf '%s' "$s"
+}
+
+tail -n +2 "$CSV_FILE" | tr -d '\r' | while IFS=, read -r DOMAIN TYPE TTL RDATA
 do
-  DOMAIN="$(echo "$DOMAIN" | xargs)"
-  TYPE="$(echo "$TYPE" | xargs | tr '[:lower:]' '[:upper:]')"
-  TTL="$(echo "$TTL" | xargs)"
-  RDATA="$(echo "$RDATA" | xargs)"
+  DOMAIN="$(trim "$DOMAIN")"
+  TYPE="$(trim "$TYPE" | tr '[:lower:]' '[:upper:]')"
+  TTL="$(trim "$TTL")"
+  RDATA="$(trim "$RDATA")"
 
   echo "Processing: DOMAIN=$DOMAIN TYPE=$TYPE TTL=$TTL RDATA=$RDATA"
 
-  if [ -z "$DOMAIN" ] || [ -z "$TYPE" ] || [ -z "$TTL" ] || [ -z "$RDATA" ]; then
+  if [[ -z "$DOMAIN" || -z "$TYPE" || -z "$TTL" || -z "$RDATA" ]]; then
     echo "Skipping invalid row"
     continue
   fi
@@ -38,16 +86,15 @@ do
       ;;
   esac
 
-  # Build JSON array for --items from multiple RDATA values separated by "|"
   ITEMS="["
   FIRST=true
 
   IFS='|' read -ra VALUES <<< "$RDATA"
   for VALUE in "${VALUES[@]}"; do
-    VALUE="$(echo "$VALUE" | xargs)"
-    [ -z "$VALUE" ] && continue
+    VALUE="$(trim "$VALUE")"
+    [[ -z "$VALUE" ]] && continue
 
-    if [ "$FIRST" = true ]; then
+    if [[ "$FIRST" == true ]]; then
       FIRST=false
     else
       ITEMS+=","
@@ -58,7 +105,7 @@ do
 
   ITEMS+="]"
 
-  if [ "$FIRST" = true ]; then
+  if [[ "$FIRST" == true ]]; then
     echo "Skipping row with no valid RDATA values"
     continue
   fi
